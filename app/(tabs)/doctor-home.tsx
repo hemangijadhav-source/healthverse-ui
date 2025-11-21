@@ -95,11 +95,34 @@ export default function DoctorHomeScreen() {
   ]);
 
   const pendingCount = allAppointments.filter(a => a.status === 'pending').length;
+  const completedToday = todaysAppointments.filter(a => a.status === 'completed').length;
+  const totalThisWeek = todaysAppointments.length + upcomingAppointments.length;
 
   const stats = [
-    { label: "Today's", value: todaysAppointments.length.toString(), icon: Users, color: '#10b981' },
-    { label: 'Pending', value: pendingCount.toString(), icon: Bell, color: '#f59e0b' },
-    { label: 'This Week', value: (todaysAppointments.length + upcomingAppointments.length).toString(), icon: Calendar, color: '#3b82f6' },
+    {
+      label: "Today's Patients",
+      value: todaysAppointments.length.toString(),
+      subtitle: `${completedToday} completed`,
+      icon: Users,
+      color: '#10b981',
+      bgColor: 'rgba(16, 185, 129, 0.1)'
+    },
+    {
+      label: 'Pending Requests',
+      value: pendingCount.toString(),
+      subtitle: 'Need approval',
+      icon: Bell,
+      color: '#f59e0b',
+      bgColor: 'rgba(245, 158, 11, 0.1)'
+    },
+    {
+      label: 'This Week',
+      value: totalThisWeek.toString(),
+      subtitle: `${upcomingAppointments.length} upcoming`,
+      icon: Calendar,
+      color: '#6366F1',
+      bgColor: 'rgba(99, 102, 241, 0.1)'
+    },
   ];
 
   const handleViewPatient = (patientId: string) => {
@@ -158,9 +181,12 @@ export default function DoctorHomeScreen() {
                 key={stat.label}
                 style={[styles.statCard, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}
               >
-                <Icon size={20} color={stat.color} strokeWidth={2} />
+                <View style={[styles.statIconWrapper, { backgroundColor: stat.bgColor }]}>
+                  <Icon size={22} color={stat.color} strokeWidth={2} />
+                </View>
                 <Text style={[styles.statValue, { color: colors.text }]}>{stat.value}</Text>
-                <Text style={[styles.statLabel, { color: colors.textTertiary }]}>{stat.label}</Text>
+                <Text style={[styles.statLabel, { color: colors.text }]}>{stat.label}</Text>
+                <Text style={[styles.statSubtitle, { color: colors.textTertiary }]}>{stat.subtitle}</Text>
               </View>
             );
           })}
@@ -335,25 +361,42 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 20,
+    gap: 12,
+    marginBottom: 24,
   },
   statCard: {
     flex: 1,
-    borderRadius: 14,
-    padding: 12,
+    borderRadius: 16,
+    padding: 16,
     alignItems: 'center',
     borderWidth: 1,
-    gap: 6,
+    gap: 8,
+    minHeight: 140,
+  },
+  statIconWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
   },
   statValue: {
-    fontSize: 20,
+    fontSize: 28,
     fontFamily: 'Inter-Bold',
+    letterSpacing: -0.5,
   },
   statLabel: {
-    fontSize: 11,
-    fontFamily: 'Inter-Medium',
+    fontSize: 12,
+    fontFamily: 'Inter-SemiBold',
     textAlign: 'center',
+    lineHeight: 16,
+  },
+  statSubtitle: {
+    fontSize: 10,
+    fontFamily: 'Inter-Regular',
+    textAlign: 'center',
+    marginTop: 2,
   },
   section: {
     marginBottom: 24,
