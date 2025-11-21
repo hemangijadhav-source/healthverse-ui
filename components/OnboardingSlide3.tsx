@@ -62,7 +62,7 @@ export default function OnboardingSlide3() {
       >
         <Text style={styles.title}>Smart & Private</Text>
         <Text style={styles.description}>
-          AI-powered insights with total privacy.
+          AI-Powered Smart Health Timeline
         </Text>
       </MotiView>
     </View>
