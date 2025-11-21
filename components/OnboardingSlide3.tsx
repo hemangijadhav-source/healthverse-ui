@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
   imageContainer: {
     width: imageSize,
     height: imageSize,
-    borderRadius: 20,
+    borderRadius: imageSize / 2,
     overflow: 'hidden',
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
