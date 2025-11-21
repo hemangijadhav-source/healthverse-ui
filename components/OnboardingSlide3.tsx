@@ -60,10 +60,10 @@ export default function OnboardingSlide3() {
         transition={{ type: 'timing', duration: 600, delay: 1000 }}
         style={styles.textContainer}
       >
-        <Text style={styles.title}>AI-Powered Intelligence</Text>
+        <Text style={styles.title}>Smart & Private</Text>
         <Text style={styles.description}>
-          Smart health insights with{"\n"}
-          complete privacy and security
+          AI-Powered {"\n"}
+          Smart Health Timeline
         </Text>
       </MotiView>
     </View>
