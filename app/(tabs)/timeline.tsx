@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Modal } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MotiView } from 'moti';
-import { Clock, Upload, FileText, Pill, Receipt, FileHeart, Sun, Moon, Home, Search, Calendar, User } from 'lucide-react-native';
+import { Clock, Upload, FileText, Pill, Receipt, FileHeart, Sun, Moon, Home, Search, Calendar, User, X, Eye, Download } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useTheme, lightTheme, darkTheme } from '../../contexts/ThemeContext';
 
@@ -15,12 +15,14 @@ interface TimelineEvent {
   date: string;
   timestamp: number;
   description: string;
+  documentUrl?: string;
 }
 
 export default function TimelineScreen() {
   const router = useRouter();
   const { isDark, toggleTheme } = useTheme();
   const colors = isDark ? darkTheme : lightTheme;
+  const [selectedEvent, setSelectedEvent] = useState<TimelineEvent | null>(null);
 
   const [events, setEvents] = useState<TimelineEvent[]>([
     {
@@ -30,6 +32,7 @@ export default function TimelineScreen() {
       date: 'Jan 15, 2025',
       timestamp: Date.now() - 86400000 * 5,
       description: 'Complete Blood Count analysis results',
+      documentUrl: 'https://example.com/blood-work-report.pdf',
     },
     {
       id: '2',
@@ -38,6 +41,7 @@ export default function TimelineScreen() {
       date: 'Jan 12, 2025',
       timestamp: Date.now() - 86400000 * 8,
       description: 'Diabetes medication prescribed',
+      documentUrl: 'https://example.com/prescription.pdf',
     },
     {
       id: '3',
@@ -54,6 +58,7 @@ export default function TimelineScreen() {
       date: 'Jan 5, 2025',
       timestamp: Date.now() - 86400000 * 15,
       description: 'Consultation fee payment',
+      documentUrl: 'https://example.com/invoice.pdf',
     },
   ]);
 
@@ -91,6 +96,14 @@ export default function TimelineScreen() {
 
   const handleUploadDocument = () => {
     router.push('/(tabs)/upload-document');
+  };
+
+  const handleViewDetails = (event: TimelineEvent) => {
+    setSelectedEvent(event);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedEvent(null);
   };
 
   return (
@@ -183,10 +196,12 @@ export default function TimelineScreen() {
                     <Text style={[styles.eventDate, { color: colors.textTertiary }]}>{event.date}</Text>
                   </View>
                   <Text style={[styles.eventTitle, { color: colors.text }]}>{event.title}</Text>
-                  <Text style={[styles.eventDescription, { color: colors.textSecondary }]}>{event.description}</Text>
 
                   <View style={styles.eventFooter}>
-                    <TouchableOpacity style={[styles.viewButton, { borderColor: color }]}>
+                    <TouchableOpacity
+                      style={[styles.viewButton, { borderColor: color }]}
+                      onPress={() => handleViewDetails(event)}
+                    >
                       <Text style={[styles.viewButtonText, { color }]}>View Details</Text>
                     </TouchableOpacity>
                   </View>
@@ -198,6 +213,95 @@ export default function TimelineScreen() {
 
         <View style={styles.spacing} />
       </ScrollView>
+
+      <Modal
+        visible={!!selectedEvent}
+        transparent
+        animationType="fade"
+        onRequestClose={handleCloseModal}
+      >
+        <View style={[styles.modalOverlay, { backgroundColor: isDark ? 'rgba(15, 23, 42, 0.9)' : 'rgba(0, 0, 0, 0.7)' }]}>
+          <MotiView
+            from={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: 'spring', damping: 15 }}
+            style={[styles.modalContent, { backgroundColor: colors.containerBg }]}
+          >
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Document Details</Text>
+              <TouchableOpacity onPress={handleCloseModal} style={[styles.closeButton, { backgroundColor: colors.cardBg }]}>
+                <X size={20} color={colors.text} strokeWidth={2} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              {selectedEvent && (
+                <>
+                  <View style={[styles.detailRow, { borderBottomColor: colors.cardBorder }]}>
+                    <Text style={[styles.detailLabel, { color: colors.textTertiary }]}>Type</Text>
+                    <View style={[styles.typeBadge, { backgroundColor: `${getEventColor(selectedEvent.type)}15` }]}>
+                      <Text style={[styles.typeBadgeText, { color: getEventColor(selectedEvent.type) }]}>
+                        {selectedEvent.type.charAt(0).toUpperCase() + selectedEvent.type.slice(1)}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={[styles.detailRow, { borderBottomColor: colors.cardBorder }]}>
+                    <Text style={[styles.detailLabel, { color: colors.textTertiary }]}>Title</Text>
+                    <Text style={[styles.detailValue, { color: colors.text }]}>{selectedEvent.title}</Text>
+                  </View>
+
+                  <View style={[styles.detailRow, { borderBottomColor: colors.cardBorder }]}>
+                    <Text style={[styles.detailLabel, { color: colors.textTertiary }]}>Date</Text>
+                    <Text style={[styles.detailValue, { color: colors.text }]}>{selectedEvent.date}</Text>
+                  </View>
+
+                  <View style={[styles.detailRow, { borderBottomColor: colors.cardBorder }]}>
+                    <Text style={[styles.detailLabel, { color: colors.textTertiary }]}>Description</Text>
+                    <Text style={[styles.detailValue, { color: colors.text }]}>{selectedEvent.description}</Text>
+                  </View>
+
+                  {selectedEvent.documentUrl && (
+                    <View style={[styles.documentSection, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
+                      <View style={styles.documentHeader}>
+                        <FileText size={24} color={getEventColor(selectedEvent.type)} strokeWidth={2} />
+                        <Text style={[styles.documentTitle, { color: colors.text }]}>Attached Document</Text>
+                      </View>
+
+                      <TouchableOpacity
+                        style={styles.viewDocButton}
+                        onPress={() => {
+                          console.log('Opening document:', selectedEvent.documentUrl);
+                        }}
+                      >
+                        <LinearGradient
+                          colors={['#6366F1', '#818CF8']}
+                          style={styles.viewDocGradient}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                        >
+                          <Eye size={18} color="#ffffff" strokeWidth={2} />
+                          <Text style={styles.viewDocText}>View Document</Text>
+                        </LinearGradient>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.downloadButton, { backgroundColor: colors.containerBg, borderColor: colors.cardBorder }]}
+                        onPress={() => {
+                          console.log('Downloading document:', selectedEvent.documentUrl);
+                        }}
+                      >
+                        <Download size={18} color={colors.accent} strokeWidth={2} />
+                        <Text style={[styles.downloadText, { color: colors.accent }]}>Download</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </>
+              )}
+            </ScrollView>
+          </MotiView>
+        </View>
+      </Modal>
 
       <View style={styles.bottomNav}>
         <View style={[styles.navContainer, { backgroundColor: colors.navBg, borderColor: colors.iconButtonBorder }]}>
@@ -323,16 +427,16 @@ const styles = StyleSheet.create({
     width: 2,
   },
   timelineItem: {
-    marginBottom: 32,
+    marginBottom: 20,
     position: 'relative',
   },
   timelineNode: {
     position: 'absolute',
     left: -20,
-    top: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    top: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
@@ -340,54 +444,48 @@ const styles = StyleSheet.create({
   },
   eventCard: {
     marginLeft: 36,
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 12,
+    padding: 12,
     borderWidth: 1,
   },
   eventHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   eventTypeBox: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
   },
   eventType: {
-    fontSize: 11,
+    fontSize: 10,
     fontFamily: 'Inter-SemiBold',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   eventDate: {
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: 'Inter-Regular',
   },
   eventTitle: {
-    fontSize: 18,
+    fontSize: 15,
     fontFamily: 'Inter-Bold',
-    marginBottom: 6,
-  },
-  eventDescription: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    lineHeight: 20,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   eventFooter: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
   },
   viewButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 8,
     borderWidth: 1.5,
   },
   viewButtonText: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: 'Inter-SemiBold',
   },
   spacing: {
@@ -431,5 +529,113 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 8,
     elevation: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 500,
+    maxHeight: '80%',
+    borderRadius: 24,
+    overflow: 'hidden',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(99, 102, 241, 0.1)',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
+  },
+  closeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalBody: {
+    padding: 20,
+  },
+  detailRow: {
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+  },
+  detailLabel: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  detailValue: {
+    fontSize: 15,
+    fontFamily: 'Inter-Regular',
+    lineHeight: 22,
+  },
+  typeBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  typeBadgeText: {
+    fontSize: 13,
+    fontFamily: 'Inter-SemiBold',
+    textTransform: 'capitalize',
+  },
+  documentSection: {
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  documentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
+  documentTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+  },
+  viewDocButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 10,
+  },
+  viewDocGradient: {
+    flexDirection: 'row',
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  viewDocText: {
+    fontSize: 15,
+    fontFamily: 'Inter-SemiBold',
+    color: '#ffffff',
+  },
+  downloadButton: {
+    flexDirection: 'row',
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  downloadText: {
+    fontSize: 15,
+    fontFamily: 'Inter-SemiBold',
   },
 });
