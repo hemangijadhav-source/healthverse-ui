@@ -1,9 +1,20 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, Image, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MotiView } from 'moti';
-import { FileText, Image as ImageIcon, Upload, X, ChevronDown } from 'lucide-react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+  interpolate,
+  Extrapolate,
+} from 'react-native-reanimated';
+import { FileText, Image as ImageIcon, Upload, X, Layers, Sparkles } from 'lucide-react-native';
 import { useTheme, lightTheme, darkTheme } from '../contexts/ThemeContext';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export interface Document {
   id: string;
@@ -45,10 +56,157 @@ const getDocumentColor = (type: string, isDark: boolean) => {
   return colors[type as keyof typeof colors] || colors.other;
 };
 
+function TimelineCard3D({
+  doc,
+  index,
+  color,
+  isDark,
+  colors,
+  onPress
+}: {
+  doc: Document;
+  index: number;
+  color: string;
+  isDark: boolean;
+  colors: any;
+  onPress: () => void;
+}) {
+  const rotateX = useSharedValue(0);
+  const rotateY = useSharedValue(0);
+  const scale = useSharedValue(1);
+  const translateZ = useSharedValue(0);
+
+  const gesture = Gesture.Pan()
+    .onBegin(() => {
+      scale.value = withSpring(1.05);
+      translateZ.value = withSpring(20);
+    })
+    .onUpdate((event) => {
+      rotateX.value = interpolate(
+        event.translationY,
+        [-100, 0, 100],
+        [15, 0, -15],
+        Extrapolate.CLAMP
+      );
+      rotateY.value = interpolate(
+        event.translationX,
+        [-100, 0, 100],
+        [-15, 0, 15],
+        Extrapolate.CLAMP
+      );
+    })
+    .onEnd(() => {
+      rotateX.value = withSpring(0);
+      rotateY.value = withSpring(0);
+      scale.value = withSpring(1);
+      translateZ.value = withSpring(0);
+    });
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { perspective: 1000 },
+        { rotateX: `${rotateX.value}deg` },
+        { rotateY: `${rotateY.value}deg` },
+        { scale: scale.value },
+        { translateZ: translateZ.value },
+      ],
+    };
+  });
+
+  return (
+    <GestureDetector gesture={gesture}>
+      <Animated.View style={[styles.card3DWrapper, animatedStyle]}>
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={onPress}
+          style={styles.card3DTouch}
+        >
+          <LinearGradient
+            colors={isDark
+              ? [`${color}15`, `${color}05`]
+              : [`${color}10`, `${color}05`]
+            }
+            style={[styles.card3D, { borderColor: `${color}40` }]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <View style={styles.card3DInner}>
+              <View style={[styles.iconContainer3D, { backgroundColor: `${color}25` }]}>
+                <MotiView
+                  from={{ scale: 0, rotate: '-180deg' }}
+                  animate={{ scale: 1, rotate: '0deg' }}
+                  transition={{
+                    delay: 400 + index * 100,
+                    type: 'spring',
+                    damping: 12,
+                  }}
+                >
+                  <Text style={styles.docIcon3D}>{getDocumentIcon(doc.type)}</Text>
+                </MotiView>
+
+                <View style={[styles.sparkleContainer]}>
+                  <MotiView
+                    animate={{
+                      opacity: [0.4, 1, 0.4],
+                      scale: [0.8, 1, 0.8],
+                    }}
+                    transition={{
+                      type: 'timing',
+                      duration: 2000,
+                      loop: true,
+                    }}
+                  >
+                    <Sparkles size={12} color={color} strokeWidth={2} />
+                  </MotiView>
+                </View>
+              </View>
+
+              <View style={styles.contentContainer3D}>
+                <View style={styles.typeRow}>
+                  <View style={[styles.typeBadge, { backgroundColor: `${color}20` }]}>
+                    <Text style={[styles.typeText, { color: color }]}>
+                      {doc.type.toUpperCase()}
+                    </Text>
+                  </View>
+                  <Layers size={14} color={colors.textTertiary} strokeWidth={2} />
+                </View>
+
+                <Text style={[styles.docTitle3D, { color: colors.text }]} numberOfLines={2}>
+                  {doc.title}
+                </Text>
+
+                <Text style={[styles.docDate3D, { color: colors.textSecondary }]}>
+                  {doc.date}
+                </Text>
+              </View>
+            </View>
+
+            <View style={[styles.glowLine, { backgroundColor: color }]} />
+
+            <View style={styles.layerIndicators}>
+              {[0, 1, 2].map((i) => (
+                <MotiView
+                  key={i}
+                  from={{ opacity: 0 }}
+                  animate={{ opacity: 0.3 }}
+                  transition={{ delay: 600 + index * 100 + i * 50 }}
+                  style={[styles.layerDot, { backgroundColor: color }]}
+                />
+              ))}
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+      </Animated.View>
+    </GestureDetector>
+  );
+}
+
 export function DocumentTimeline({ documents, onUpload, onViewDocument }: DocumentTimelineProps) {
   const { isDark } = useTheme();
   const colors = isDark ? darkTheme : lightTheme;
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
+  const scrollY = useSharedValue(0);
 
   const sortedDocs = [...documents].sort((a, b) => b.timestamp - a.timestamp);
 
@@ -89,71 +247,65 @@ export function DocumentTimeline({ documents, onUpload, onViewDocument }: Docume
         from={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 300, damping: 15 } as any}
-        style={[styles.card, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}
+        style={[styles.mainCard, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}
       >
         <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.text }]}>Documents</Text>
-          <Text style={[styles.count, { color: colors.textTertiary }]}>{documents.length}</Text>
+          <View style={styles.headerLeft}>
+            <Text style={[styles.title, { color: colors.text }]}>Documents Timeline</Text>
+            <View style={[styles.countBadge, { backgroundColor: colors.accentLight }]}>
+              <Text style={[styles.count, { color: colors.accent }]}>{documents.length}</Text>
+            </View>
+          </View>
+          <Layers size={20} color={colors.accent} strokeWidth={2} />
         </View>
 
-        <View style={styles.timeline}>
+        <View style={styles.timeline3D}>
           {sortedDocs.map((doc, index) => {
             const color = getDocumentColor(doc.type, isDark);
-            const isLast = index === sortedDocs.length - 1;
 
             return (
-              <View key={doc.id}>
-                <View style={styles.timelineItem}>
-                  <View style={styles.timelineLeft}>
-                    <MotiView
-                      from={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ delay: 400 + index * 100, damping: 15 } as any}
-                    >
-                      <View style={[styles.timelineNode, { backgroundColor: color }]} />
-                    </MotiView>
-                    {!isLast && <View style={[styles.timelineLine, { backgroundColor: color }]} />}
-                  </View>
-
-                  <MotiView
-                    from={{ opacity: 0, translateX: 20 }}
-                    animate={{ opacity: 1, translateX: 0 }}
-                    transition={{ delay: 400 + index * 100 } as any}
-                    style={styles.timelineContent}
-                  >
-                    <TouchableOpacity
-                      onPress={() => setSelectedDoc(doc)}
-                      style={[styles.docCard, { backgroundColor: colors.containerBg, borderColor: colors.cardBorder }]}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.docHeader}>
-                        <View style={[styles.docIconContainer, { backgroundColor: `${color}20` }]}>
-                          <Text style={styles.docIcon}>{getDocumentIcon(doc.type)}</Text>
-                        </View>
-                        <View style={styles.docInfo}>
-                          <Text style={[styles.docType, { color: color }]}>{doc.type.charAt(0).toUpperCase() + doc.type.slice(1)}</Text>
-                          <Text style={[styles.docTitle, { color: colors.text }]}>{doc.title}</Text>
-                          <Text style={[styles.docDate, { color: colors.textTertiary }]}>{doc.date}</Text>
-                        </View>
-                        <ChevronDown size={20} color={colors.textTertiary} strokeWidth={2} style={{ marginLeft: 'auto' }} />
-                      </View>
-                    </TouchableOpacity>
-                  </MotiView>
-                </View>
-              </View>
+              <MotiView
+                key={doc.id}
+                from={{
+                  opacity: 0,
+                  translateX: -50,
+                  scale: 0.8,
+                }}
+                animate={{
+                  opacity: 1,
+                  translateX: 0,
+                  scale: 1,
+                }}
+                transition={{
+                  type: 'spring',
+                  delay: 300 + index * 150,
+                  damping: 15,
+                  stiffness: 80,
+                }}
+                style={styles.timelineItem3D}
+              >
+                <TimelineCard3D
+                  doc={doc}
+                  index={index}
+                  color={color}
+                  isDark={isDark}
+                  colors={colors}
+                  onPress={() => setSelectedDoc(doc)}
+                />
+              </MotiView>
             );
           })}
         </View>
 
         <TouchableOpacity onPress={onUpload} style={styles.addButton}>
           <LinearGradient
-            colors={['rgba(99, 102, 241, 0.1)', 'rgba(129, 140, 248, 0.1)']}
+            colors={['#6366F1', '#818CF8']}
             style={styles.addButtonGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
-            <Upload size={16} color={colors.accent} strokeWidth={2} />
-            <Text style={[styles.addButtonText, { color: colors.accent }]}>Add Document</Text>
+            <Upload size={18} color="#ffffff" strokeWidth={2} />
+            <Text style={styles.addButtonText}>Add Document</Text>
           </LinearGradient>
         </TouchableOpacity>
       </MotiView>
@@ -164,8 +316,13 @@ export function DocumentTimeline({ documents, onUpload, onViewDocument }: Docume
         animationType="fade"
         onRequestClose={() => setSelectedDoc(null)}
       >
-        <View style={[styles.modalOverlay, { backgroundColor: isDark ? 'rgba(15, 23, 42, 0.9)' : 'rgba(0, 0, 0, 0.7)' }]}>
-          <View style={[styles.modalContent, { backgroundColor: colors.containerBg }]}>
+        <View style={[styles.modalOverlay, { backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(0, 0, 0, 0.8)' }]}>
+          <MotiView
+            from={{ scale: 0.8, opacity: 0, rotateX: '45deg' }}
+            animate={{ scale: 1, opacity: 1, rotateX: '0deg' }}
+            transition={{ type: 'spring', damping: 20 }}
+            style={[styles.modalContent, { backgroundColor: colors.containerBg }]}
+          >
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>{selectedDoc?.title}</Text>
               <TouchableOpacity onPress={() => setSelectedDoc(null)}>
@@ -212,7 +369,7 @@ export function DocumentTimeline({ documents, onUpload, onViewDocument }: Docume
                 <Text style={[styles.closeButtonText, { color: colors.text }]}>Close</Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </MotiView>
         </View>
       </Modal>
     </>
@@ -261,9 +418,9 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     color: '#ffffff',
   },
-  card: {
-    borderRadius: 20,
-    padding: 16,
+  mainCard: {
+    borderRadius: 24,
+    padding: 20,
     borderWidth: 1,
     marginBottom: 16,
   },
@@ -271,110 +428,150 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 24,
   },
-  title: {
-    fontSize: 16,
-    fontFamily: 'Inter-Bold',
-  },
-  count: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
-    marginVertical: 12,
-  },
-  timeline: {
-    marginBottom: 0,
-  },
-  timelineItem: {
-    flexDirection: 'row',
-    marginBottom: 16,
-  },
-  timelineLeft: {
-    alignItems: 'center',
-    marginRight: 16,
-    width: 30,
-  },
-  timelineNode: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 3,
-    borderColor: '#ffffff',
-  },
-  timelineLine: {
-    width: 2,
-    flex: 1,
-    marginTop: 8,
-  },
-  timelineContent: {
-    flex: 1,
-  },
-  docCard: {
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-  },
-  docHeader: {
+  headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-  docIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
+  title: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
   },
-  docIcon: {
-    fontSize: 24,
+  countBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
-  docInfo: {
+  count: {
+    fontSize: 12,
+    fontFamily: 'Inter-Bold',
+  },
+  timeline3D: {
+    gap: 16,
+    marginBottom: 20,
+  },
+  timelineItem3D: {
+    width: '100%',
+  },
+  card3DWrapper: {
+    width: '100%',
+    height: 140,
+  },
+  card3DTouch: {
     flex: 1,
   },
-  docType: {
-    fontSize: 11,
-    fontFamily: 'Inter-SemiBold',
-    textTransform: 'uppercase',
+  card3D: {
+    flex: 1,
+    borderRadius: 20,
+    borderWidth: 2,
+    overflow: 'hidden',
+    position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  card3DInner: {
+    flex: 1,
+    flexDirection: 'row',
+    padding: 16,
+    gap: 16,
+  },
+  iconContainer3D: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    position: 'relative',
+  },
+  docIcon3D: {
+    fontSize: 36,
+  },
+  sparkleContainer: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+  },
+  contentContainer3D: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: 6,
+  },
+  typeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  typeBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  typeText: {
+    fontSize: 10,
+    fontFamily: 'Inter-Bold',
     letterSpacing: 0.5,
-    marginBottom: 2,
   },
-  docTitle: {
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-    marginBottom: 2,
+  docTitle3D: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    lineHeight: 22,
   },
-  docDate: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
+  docDate3D: {
+    fontSize: 13,
+    fontFamily: 'Inter-Medium',
+  },
+  glowLine: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    opacity: 0.6,
+  },
+  layerIndicators: {
+    position: 'absolute',
+    bottom: 10,
+    right: 16,
+    flexDirection: 'row',
+    gap: 6,
+  },
+  layerDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   addButton: {
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
   },
   addButtonGradient: {
+    paddingVertical: 14,
     flexDirection: 'row',
-    paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 10,
   },
   addButtonText: {
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
+    fontSize: 15,
+    fontFamily: 'Inter-Bold',
+    color: '#ffffff',
   },
   modalOverlay: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
   },
   modalContent: {
-    borderRadius: 24,
-    width: '90%',
+    borderRadius: 28,
+    width: '100%',
+    maxWidth: 400,
     maxHeight: '80%',
     overflow: 'hidden',
   },
@@ -382,21 +579,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    padding: 24,
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontFamily: 'Inter-Bold',
+    flex: 1,
+    marginRight: 12,
   },
   modalDivider: {
     height: 1,
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    backgroundColor: 'rgba(99, 102, 241, 0.15)',
   },
   modalBody: {
-    padding: 20,
+    padding: 24,
   },
   docDetails: {
-    gap: 16,
+    gap: 20,
   },
   detailRow: {
     flexDirection: 'row',
@@ -404,45 +603,46 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   detailLabel: {
-    fontSize: 13,
-    fontFamily: 'Inter-Medium',
+    fontSize: 12,
+    fontFamily: 'Inter-Bold',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
   detailValue: {
-    fontSize: 15,
+    fontSize: 16,
     fontFamily: 'Inter-SemiBold',
   },
   previewContainer: {
-    borderRadius: 12,
-    padding: 20,
+    borderRadius: 16,
+    padding: 24,
     minHeight: 200,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 8,
   },
   previewPlaceholder: {
     alignItems: 'center',
     gap: 12,
   },
   previewText: {
-    fontSize: 13,
-    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
   },
   modalFooter: {
-    padding: 20,
+    padding: 24,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(99, 102, 241, 0.1)',
+    borderTopColor: 'rgba(99, 102, 241, 0.15)',
   },
   closeButton: {
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: 14,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(99, 102, 241, 0.1)',
+    borderColor: 'rgba(99, 102, 241, 0.2)',
   },
   closeButtonText: {
-    fontSize: 15,
+    fontSize: 16,
     fontFamily: 'Inter-SemiBold',
   },
 });
