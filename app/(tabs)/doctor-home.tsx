@@ -286,17 +286,12 @@ export default function DoctorHomeScreen() {
 
           <TouchableOpacity
             onPress={() => setShowQRScanner(true)}
-            style={styles.qrFloatingButton}
-            activeOpacity={0.8}
+            style={styles.navButton}
+            activeOpacity={0.7}
           >
-            <LinearGradient
-              colors={['#6366F1', '#818CF8']}
-              style={styles.qrFloatingGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <QrCode size={28} color="#ffffff" strokeWidth={2} />
-            </LinearGradient>
+            <View style={[styles.navButtonInner, { backgroundColor: colors.navInactive }]}>
+              <QrCode size={24} color={colors.textSecondary} strokeWidth={2} />
+            </View>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -546,36 +541,16 @@ const styles = StyleSheet.create({
   },
   navContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    borderRadius: 30,
+    borderRadius: 28,
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 12,
+    gap: 12,
     borderWidth: 1,
     shadowColor: '#10b981',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,
     shadowRadius: 16,
     elevation: 16,
-  },
-  qrFloatingButton: {
-    position: 'relative',
-    bottom: 20,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    overflow: 'hidden',
-    shadowColor: '#6366F1',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 16,
-  },
-  qrFloatingGradient: {
-    width: '100%',
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   navButton: {
     position: 'relative',
