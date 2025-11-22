@@ -1,16 +1,21 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Platform, StatusBar } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { View, StyleSheet, Platform, StatusBar } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
 import { useTheme, lightTheme, darkTheme } from '../../contexts/ThemeContext';
 import SearchBar from '../../components/SearchBar';
+import DoctorResultsList from '../../components/DoctorResultsList';
 import EmptySearchState from '../../components/EmptySearchState';
+import { mockDoctors, filterDoctors } from '../../data/mockDoctors';
+import { DoctorCardData } from '../../components/DoctorCard';
 
 export default function SearchScreen() {
-  const router = useRouter();
   const { isDark } = useTheme();
   const colors = isDark ? darkTheme : lightTheme;
   const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredDoctors = useMemo(() => {
+    return filterDoctors(searchQuery);
+  }, [searchQuery]);
 
   const handleSearch = (text: string) => {
     setSearchQuery(text);
@@ -20,7 +25,12 @@ export default function SearchScreen() {
     setSearchQuery('');
   };
 
-  const hasNoResults = searchQuery.trim().length > 0;
+  const handleCardPress = (doctor: DoctorCardData) => {
+    console.log('Doctor selected:', doctor.name);
+  };
+
+  const showResults = searchQuery.trim().length > 0;
+  const showEmptyState = !showResults;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.containerBg }]}>
@@ -39,16 +49,17 @@ export default function SearchScreen() {
         />
       </View>
 
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {hasNoResults && (
+      <View style={styles.content}>
+        {showEmptyState ? (
           <EmptySearchState />
+        ) : (
+          <DoctorResultsList
+            doctors={filteredDoctors}
+            searchQuery={searchQuery}
+            onCardPress={handleCardPress}
+          />
         )}
-      </ScrollView>
+      </View>
     </View>
   );
 }
@@ -66,12 +77,9 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingBottom: 8,
+    paddingHorizontal: 16,
   },
   content: {
     flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingTop: 20,
   },
 });
