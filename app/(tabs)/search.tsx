@@ -14,6 +14,7 @@ export default function SearchScreen() {
   const colors = isDark ? darkTheme : lightTheme;
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
+  const [hasSearched, setHasSearched] = useState(false);
 
   const filteredDoctors = useMemo(() => {
     return filterDoctors(searchQuery);
@@ -21,10 +22,18 @@ export default function SearchScreen() {
 
   const handleSearch = (text: string) => {
     setSearchQuery(text);
+    if (text.trim().length > 0 && !hasSearched) {
+      setHasSearched(true);
+    }
   };
 
   const handleClear = () => {
     setSearchQuery('');
+    setHasSearched(false);
+  };
+
+  const handleBack = () => {
+    router.push('/(tabs)/profile');
   };
 
   const handleCardPress = (doctor: DoctorCardData) => {
@@ -36,6 +45,7 @@ export default function SearchScreen() {
 
   const showResults = searchQuery.trim().length > 0;
   const showEmptyState = !showResults;
+  const showNoResults = hasSearched && filteredDoctors.length === 0 && searchQuery.trim().length > 0;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.containerBg }]}>
@@ -51,11 +61,14 @@ export default function SearchScreen() {
           value={searchQuery}
           onChangeText={handleSearch}
           onClear={handleClear}
+          onBack={handleBack}
         />
       </View>
 
       <View style={styles.content}>
         {showEmptyState ? (
+          <EmptySearchState message="Start typing to search for doctors, hospitals, or specialties" />
+        ) : showNoResults ? (
           <EmptySearchState />
         ) : (
           <DoctorResultsList
