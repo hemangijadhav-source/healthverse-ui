@@ -128,6 +128,15 @@ export function DocumentTimeline3D({
         )}
         ItemSeparatorComponent={() => <View style={styles.sep} />}
         contentContainerStyle={{ padding: 12 }}
+        // Make FlatList more tolerant when used inside other scrollable parents.
+        // `nestedScrollEnabled` helps on Android when nested in another scrollable view.
+        nestedScrollEnabled={true}
+        // Tune virtualization to be predictable when nested; these are conservative defaults.
+        initialNumToRender={8}
+        maxToRenderPerBatch={12}
+        windowSize={7}
+        // Avoid clipping issues when nested inside other views.
+        removeClippedSubviews={false}
       />
 
       <TouchableOpacity
