@@ -28,7 +28,7 @@ export default function DoctorProfileDetailScreen() {
   return (
     <DoctorProfileView
       doctor={doctor}
-      onBack={() => router.back()}
+      onBack={() => router.push('/(tabs)/search')}
     />
   );
 }

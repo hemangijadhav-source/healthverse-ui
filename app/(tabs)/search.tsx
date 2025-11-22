@@ -33,7 +33,7 @@ export default function SearchScreen() {
   };
 
   const handleBack = () => {
-    router.push('/(tabs)/profile');
+    router.push('/(tabs)/patient-home');
   };
 
   const handleCardPress = (doctor: DoctorCardData) => {
